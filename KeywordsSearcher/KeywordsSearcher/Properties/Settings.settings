@@ -1,0 +1,15 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="KeywordsSearcher.Properties" GeneratedClassName="Settings">
+  <Profiles />
+  <Settings>
+    <Setting Name="Path" Type="System.String" Scope="User">
+      <Value Profile="(Default)">C:\Users\GenkCapital\Desktop\StockReports</Value>
+    </Setting>
+    <Setting Name="SearchString" Type="System.String" Scope="User">
+      <Value Profile="(Default)">cash distribution,rights offering,spinoff,spin-off,spin off,restructur,Restructur,recapitalization,cash offer,TOP</Value>
+    </Setting>
+    <Setting Name="StartDate" Type="System.DateTime" Scope="User">
+      <Value Profile="(Default)">2015-06-01</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

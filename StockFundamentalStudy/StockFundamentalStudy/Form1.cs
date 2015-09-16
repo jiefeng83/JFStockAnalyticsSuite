@@ -76,11 +76,11 @@ namespace StockFundamentalStudy
             ServicePointManager.DefaultConnectionLimit = 1000;
             webBrowser1.ScriptErrorsSuppressed = true;
             webBrowser1.ScrollBarsEnabled = false;
-            string userName = "koh_jiefeng"; 
-            string password = "abcd1234";
-            string hdr = "Authorization: Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(userName + ":" + password)) + System.Environment.NewLine;
- 
             //webBrowser1.Navigate("http://www.shareinvestor.com/");
+
+            string userName = "";
+            string password = "";
+            string hdr = "Authorization: Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(userName + ":" + password)) + System.Environment.NewLine;
             webBrowser1.Navigate(String.Format("https://{0}:{1}@www.shareinvestor.com/user/do_login.html?use_https=0", userName, password), null, null, hdr);
         }
 

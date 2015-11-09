@@ -11,5 +11,8 @@
     <Setting Name="StartDate" Type="System.DateTime" Scope="User">
       <Value Profile="(Default)">2015-06-01</Value>
     </Setting>
+    <Setting Name="LastDate" Type="System.DateTime" Scope="User">
+      <Value Profile="(Default)">2015-09-20</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
 using System.Text.RegularExpressions;
+using iTextSharp.text.pdf;
+using iTextSharp.text.pdf.parser;
 
 namespace KeywordsSearcher
 {
@@ -23,7 +25,20 @@ namespace KeywordsSearcher
             dateTimePicker2.Value = DateTime.Now;
             textBox1.Text = Properties.Settings.Default["Path"].ToString();
             textBox2.Text = Properties.Settings.Default["SearchString"].ToString();
-            string x = Properties.Settings.Default["StartDate"].ToString();
+            dateTimePicker1.Value = (DateTime)Properties.Settings.Default["StartDate"];
+            textBox1.Text = (string)Properties.Settings.Default["Path"];
+            
+            string[] args = Environment.GetCommandLineArgs();
+
+            if (args.Length > 1)
+            {
+                textBox1.Text = args[1];
+
+                if (args.Length > 2)
+                {
+                    dateTimePicker1.Value = DateTime.ParseExact(args[2], "ddMMMyy", System.Globalization.CultureInfo.InvariantCulture);
+                }
+            }
         }
 
         private void startButton_Click(object sender, EventArgs e)
@@ -38,6 +53,13 @@ namespace KeywordsSearcher
 
             string path = @textBox1.Text+ @"\";
             string[] searchText = textBox2.Text.Split(',');
+
+            if (!System.IO.Directory.Exists(path))
+            {
+                MessageBox.Show("Directory does not exist.", "Error");
+                return;
+            }
+
             foreach (string filepath in Directory.EnumerateFiles(path))
             {
                 try
@@ -56,9 +78,6 @@ namespace KeywordsSearcher
                     }
                 }
                 catch { }
-
-
-               
             }
 
             dataGridView1.SuspendLayout();
@@ -79,6 +98,57 @@ namespace KeywordsSearcher
             }
                 dataGridView1.ResumeLayout();
         }
+
+        private void convertButton_Click(object sender, EventArgs e)
+        {
+            string path = @textBox1.Text + @"\";
+
+            if (!System.IO.Directory.Exists(path))
+            {
+                MessageBox.Show("Directory does not exist.", "Error");
+                return;
+            }
+
+            int count = 0;
+
+            foreach (string filepath in Directory.EnumerateFiles(path))
+            {
+                try
+                {
+                    if (filepath.Contains(".pdf"))
+                    {
+                        string text = ExtractTextFromPdf(filepath);
+                        System.IO.StreamWriter file = new System.IO.StreamWriter(filepath.Replace(".pdf",".txt"));
+                        file.Write(text);
+                        file.Close();
+                        count++;
+                    }
+                }
+                catch { }
+            }
+
+            MessageBox.Show(count + " files converted.", "KeywordSearcher");
+        }
+
+        public static string ExtractTextFromPdf(string path)
+        {
+            using (PdfReader reader = new PdfReader(path))
+            {
+                StringBuilder text = new StringBuilder();
+
+                for (int i = 1; i <= reader.NumberOfPages; i++)
+                {
+                    string thePage = PdfTextExtractor.GetTextFromPage(reader, i);
+                    string[] theLines = thePage.Split('\n');
+                    foreach (var theLine in theLines)
+                    {
+                        text.AppendLine(theLine);
+                    }
+                }
+
+                return text.ToString();
+            }
+        } 
 
         private void dataGridView1_CellContentDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
@@ -123,6 +193,8 @@ namespace KeywordsSearcher
             else
                 return System.Windows.Forms.Cursor.Position.Y - 20;
         }
+
+
     }
 
     public class FileInfo
@@ -144,7 +216,7 @@ namespace KeywordsSearcher
             catch { }
 
             string content = completeText;
-            string[] lines = completeText.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);
+            string[] lines = completeText.Split(new string[] { "\r\n \r\n" }, StringSplitOptions.None);
             List<string> lList = new List<string>();
             foreach (string l in lines)
             {

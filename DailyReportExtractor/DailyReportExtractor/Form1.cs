@@ -16,14 +16,16 @@ using System.Collections.Specialized;
 using System.Web;
 using System.Threading;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace DailyReportExtractor
 {
     public partial class Form1 : Form
     {
-        bool isFirstLoad = true;
-        bool startExtract = false;
-        int retries = 0;
+        enum MyState { FIRST_LOAD, TO_LOGIN, READY }
+
+        MyState myState = MyState.FIRST_LOAD;
+        string extractFolderPath = @".\StockReports\";
         string currStockCode = "";
         string cookies = "";
 
@@ -34,153 +36,166 @@ namespace DailyReportExtractor
         DateTime startDate = new DateTime(0);
 
         ConcurrentQueue<string> stockAddressQueue = new ConcurrentQueue<string>();
-
         Regex regex = new Regex(@"^-?\d+(?:\.\d+)?");
-
         List<string> stockList = new List<string>();
-
-        int secCounter = 0;
+        List<MyFileInfo> CompleteFileList = new List<MyFileInfo>();
  
         public Form1()
         {
             InitializeComponent();
+
+            if (!System.IO.Directory.Exists(extractFolderPath))
+                System.IO.Directory.CreateDirectory(extractFolderPath);
+
             LogTextbox.Text += "Loading...\n";
+
+            string userName = "";
+            string password = "";
+            string hdr = "Authorization: Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(userName + ":" + password)) + System.Environment.NewLine;
+            
             webBrowser1.ScriptErrorsSuppressed = true;
             webBrowser1.ScrollBarsEnabled = false;
-            webBrowser1.Navigate("http://www.shareinvestor.com/");
+            webBrowser1.Navigate(String.Format("https://{0}:{1}@www.shareinvestor.com/user/do_login.html?use_https=0", userName, password), null, null, hdr);
+            
+            LogTextbox.Text = "Welcome!\n";
+            LogTextbox.Text += "Please log into Share Investor!\n";
+            LogTextbox.SelectionStart = LogTextbox.Text.Length;
+            LogTextbox.ScrollToCaret();
+
+            Task.Factory.StartNew(InitSetup);
         }
     
-        private void webBrowser1_DocumentCompleted(object sender, WebBrowserDocumentCompletedEventArgs e)
+        void Start_Click(object sender, EventArgs e)
         {
-            label1.Text = "OK";
-            secCounter = 0;
-            timer1.Enabled = true;
-        }
-
-        private void Start_Click(object sender, EventArgs e)
-        {
-            selectedType = comboBox1.Text;
-            startDate = dateTimePicker1.Value;
-            errorStockTextBox.Text = "";
             stockAddressQueue = new ConcurrentQueue<string>();
             currStockNum = 0;
-            if (stockAddressQueue.Count == 0)
-            {
-                StringReader strReader = new StringReader(stockTextbox.Text);
-                string str;
+            stockAddressQueue.Enqueue("1");
+            stockAddressQueue.Enqueue("2");
+            stockAddressQueue.Enqueue("3");
+            stockAddressQueue.Enqueue("4");
+            stockAddressQueue.Enqueue("5");
+            totalStockNum = stockAddressQueue.Count;
 
-                for (; ; )
-                {
-                    str = strReader.ReadLine();
-                    if (str != null && str != "") stockAddressQueue.Enqueue(str);
-                    else break;
-                }
-
-                totalStockNum = stockAddressQueue.Count;
-            }
-
-            startExtract = true;
-            Task.Factory.StartNew(ReadStockFromStockQueue);
+            Task.Factory.StartNew(ReadStockFromStockQueue); //start ReadStockFromStockQueue from another thread
         }
 
-        private void ReadStockFromStockQueue()
+        void SearchButton_Click(object sender, EventArgs e)
         {
+            if (!System.IO.File.Exists(@"KeywordsSearcher.exe"))
+            {
+                MessageBox.Show("KeywordSearcher.exe does not exist.", "Error");
+                return;
+            }
+
+            Process keywordSearcher = new Process();
+            keywordSearcher.StartInfo.FileName = "KeywordsSearcher.exe";
+            keywordSearcher.StartInfo.Arguments = extractFolderPath; // if you need some
+            keywordSearcher.Start();
+        }
+
+        void ClearButton_Click(object sender, EventArgs e)
+        {
+            System.IO.DirectoryInfo extractFolderInfo = new DirectoryInfo(extractFolderPath);
+
+            foreach (FileInfo file in extractFolderInfo.GetFiles())
+            {
+                file.Delete();
+            }
+        }
+
+        void InitSetup()
+        {
+            while (myState != MyState.READY)
+            {
+                Thread.Sleep(2000);
+
+                try
+                {
+                    Invoke((MethodInvoker)delegate
+                    {
+                        switch (myState)
+                        {
+                            case MyState.FIRST_LOAD:
+                                webBrowser1.Document.Window.ScrollTo(3000, 0);
+                                myState = MyState.TO_LOGIN;
+                                break;
+
+                            case MyState.TO_LOGIN:
+                                if (webBrowser1.DocumentText.Contains("Welcome,"))
+                                {
+                                    webBrowser1.Document.Window.ScrollTo(3000, 0);
+                                    myState = MyState.READY;
+                                    StartButton.Enabled = true;
+                                    printText("Login Success!\n\nPress START to extract data of stocks.");
+                                    cookies = GetCookies();
+                                }
+                                break;
+                        }
+                    });
+                }
+                catch { }
+            }
+        }
+
+        void ReadStockFromStockQueue() //Single Thread Recurring Function
+        {
+            if (stockAddressQueue.IsEmpty)
+            {
+                printText("Extract Completed! Total files = " + CompleteFileList.Count);
+                myState = MyState.READY;
+                SaveAllFiles(CompleteFileList);
+                return;
+            }
+
             if (!stockAddressQueue.IsEmpty && stockAddressQueue.TryDequeue(out currStockCode))
             {
+                int counter = 0;
+                bool extractSuccess = false;
+                
                 currStockNum++;
-                printText("Reading " + currStockCode + "... (" + currStockNum + "/" + totalStockNum + ")");
-                webBrowser1.Navigate("http://www.shareinvestor.com/fundamental/events_calendar.html#/?type=events_historical&counter="+currStockCode+".SI&market=sgx&page=1");
-            }
-            else if (stockAddressQueue.IsEmpty)
-            {
-                printText("Extract Completed!");
-            }
-        }
+                printText("Reading... (" + currStockNum + "/" + totalStockNum + ")");
+                webBrowser1.DocumentText = "";
+                webBrowser1.Navigate("http://www.shareinvestor.com/fundamental/events_calendar.html#/?type=events_historical&page=" + currStockCode);
 
-        private void timer1_Tick(object sender, EventArgs e)
-        {
-            if (secCounter > 2)
-            {
-                if (startExtract) //ExtractMode
+                while (!extractSuccess && counter <= 3)
                 {
-                    if (extractInfo(webBrowser1.DocumentText))
+                    Thread.Sleep(2000);
+
+                    Invoke((MethodInvoker)delegate
                     {
-                        timer1.Enabled = false;
-                        retries = 0;
-                        printText("Extract Success! (" + currStockNum + "/" + totalStockNum + ")");
-                        webBrowser1.DocumentText = "";
-                        Task.Factory.StartNew(ReadStockFromStockQueue);
-                    }
-                    else
-                    {
-                        if (retries > 3)
-                        {
-                            errorStockTextBox.Text += currStockCode + "\n";
-                            ReadStockFromStockQueue();
-                            timer1.Enabled = false;
-                            retries = 0;
-                        }
+                        counter++;
+
+                        extractSuccess = ExtractInfo(webBrowser1.DocumentText);
+
+                        if (extractSuccess)
+                            printText("Extract Success! (" + currStockNum + "/" + totalStockNum + ")");
                         else
-                        {
-                            retries++;
-                            printText("Extract Fail. Retry #: " + retries);
-                        }
-                    }
+                            printText("Extract Fail! Retry " + counter + "...");
+                    });
                 }
-                else //Starting Mode
-                {
-                    if (webBrowser1.DocumentText.Contains("Welcome,"))
-                    {
-                        StartButton.Enabled = true;
-                        printText("Login Success!\n\nPress READ to read Stock List from file.\nPress START to extract data of stocks in Stock List.");
-                        cookies = GetCookies();
-                    }
-                    else
-                    {
-                        if (isFirstLoad)
-                        {
-                            isFirstLoad = false;
-                            LogTextbox.Text = "Welcome!\n";
-                        }
-                        LogTextbox.Text += "Please log into Share Investor!\n";
-                        LogTextbox.SelectionStart = LogTextbox.Text.Length;
-                        LogTextbox.ScrollToCaret();
-                    }
 
-                    webBrowser1.Document.Window.ScrollTo(3000, 0);
-                    timer1.Enabled = false;
-                    secCounter = 0;
-                }
+                ReadStockFromStockQueue();
             }
-            else
-                secCounter++;
         }
 
-        bool extractInfo(string contents)
-        {
-            //Get stockName
-            contents = trimFront(contents, "<OPTION selected");
-            string stockName = getBetween2(contents, ">", " (").Replace("\r", "").Replace("\n", "");
-            contents = trimFront(contents, stockName);
-            stockName = Regex.Match(stockName, @"[0-9a-zA-Z\s^.]+").Value;
-            stockName = stockName.Replace(" ", "");
+        //########################### EXTRACT METHODS ###########################
 
-            //Get symbol
-            string stockCode = getBetween2(contents, "(", ")").Replace(".SI", "");
-            if (stockCode != currStockCode)
-            {
-                secCounter = 0;
+        bool ExtractInfo(string contents)
+        {
+            List<MyFileInfo> fl = extractList(contents);
+
+            if (fl.Count == 0)
                 return false;
+            else
+            {
+                CompleteFileList.AddRange(fl);
+                return true;
             }
-
-            List<FileInfo> fl = extractList(contents, stockName, stockCode);
-            SaveAllFiles(fl);
-            return true;
         }
 
-        List<FileInfo> extractList(string contents, string symbol, string code)
+        List<MyFileInfo> extractList(string contents)
         {
-            var list = new List<FileInfo>();
+            var list = new List<MyFileInfo>();
             string tempContent = contents;
 
             for (;;)
@@ -189,7 +204,9 @@ namespace DailyReportExtractor
 
                 tempContent = temp != "INVALID" ? temp : tempContent;
                 string dateString = getBetween2(tempContent, "<TD>", "</TD>");
-                tempContent = trimFront(tempContent, "href=\"/fundamental/factsheet.html?counter=");
+                tempContent = trimFront(tempContent, "href=\"/fundamental/factsheet.html?counter");
+                string code = getBetween2(tempContent, "=", ".SI");
+                string symbol = getBetween2(tempContent, ">", "<").Replace(" ", "").Replace("\r\n", "");
                 string typeString = getBetween2(tempContent, "<SPAN>", "</SPAN>").Replace(" ", "");
                 string urlString = getBetween(tempContent, "http://repository.shareinvestor.com/rpt_view.pl", " \r\n");
 
@@ -204,7 +221,7 @@ namespace DailyReportExtractor
                     DateTime date = DateTime.ParseExact(dateString, "dd MMM yyyy",
                                     System.Globalization.CultureInfo.InvariantCulture);
 
-                    list.Add(new FileInfo(symbol, code, urlString, typeString, date));
+                    list.Add(new MyFileInfo(symbol, code, urlString, typeString, date));
                 }
                 catch { }
             }
@@ -212,8 +229,7 @@ namespace DailyReportExtractor
             return list;
         }
 
-
-        void SaveAllFiles(List<FileInfo> fl)
+        void SaveAllFiles(List<MyFileInfo> fl)
         {
             foreach (var fi in fl)
             {
@@ -222,13 +238,13 @@ namespace DailyReportExtractor
             }
         }
 
-        void saveFile(FileInfo fi)
+        void saveFile(MyFileInfo fi)
         {
             try
             {
                 WebClient wc = new WebClient();
                 wc.Headers.Add("Cookie: " + cookies);
-                wc.DownloadFile(fi.url, @"C:\Users\GenkCapital\Desktop\StockReports\" + fi.symbol + "_" + fi.code + "_" + fi.type + "_" +  fi.date.ToString("ddMMMyy") + ".pdf");
+                wc.DownloadFile(fi.url, extractFolderPath + fi.symbol + "_" + fi.code + "_" + fi.type + "_" + fi.date.ToString("ddMMMyy") + ".pdf");
                 printText(fi.code + " Download completed! ");
             }
             catch (Exception e)
@@ -237,8 +253,7 @@ namespace DailyReportExtractor
             }
         }
 
-
-        private string GetCookies()
+        string GetCookies()
         {
             if (webBrowser1.InvokeRequired)
             {
@@ -250,7 +265,7 @@ namespace DailyReportExtractor
             }
         }
 
-        private void printText(string text)
+        void printText(string text)
         {
             Invoke((MethodInvoker)delegate
             {
@@ -260,8 +275,9 @@ namespace DailyReportExtractor
             });
         }
 
+        //########################### TEXT UTILITY METHODS ###########################
 
-        public static string getBetween(string strSource, string strStart, string strEnd)
+        static string getBetween(string strSource, string strStart, string strEnd)
         {
             int Start, End;
             if (strSource.Contains(strStart) && strSource.Contains(strEnd))
@@ -276,8 +292,7 @@ namespace DailyReportExtractor
             }
         }
 
-
-        public static string getBetween2(string strSource, string strStart, string strEnd)
+        static string getBetween2(string strSource, string strStart, string strEnd)
         {
             int Start, End;
             if (strSource.Contains(strStart) && strSource.Contains(strEnd))
@@ -292,7 +307,7 @@ namespace DailyReportExtractor
             }
         }
 
-        public static string trimFront(string strSource, string strStart)
+        static string trimFront(string strSource, string strStart)
         {
             int Start;
             if (strSource.Contains(strStart))
@@ -306,7 +321,7 @@ namespace DailyReportExtractor
             }
         }
 
-        public static string trimFront(string strSource, string strStart, int noOfCharBefore)
+        static string trimFront(string strSource, string strStart, int noOfCharBefore)
         {
             int Start;
             if (strSource.Contains(strStart))
@@ -324,15 +339,15 @@ namespace DailyReportExtractor
         }
     }
 
-    public class FileInfo
+    public class MyFileInfo
     {
         public string symbol = "";
         public string code = "";
-        public string url  = "";
+        public string url = "";
         public string type = "";
         public DateTime date = new DateTime(0);
 
-        public FileInfo(string symbol, string code, string url, string type, DateTime date)
+        public MyFileInfo(string symbol, string code, string url, string type, DateTime date)
         {
             this.symbol = symbol;
             this.code = code;

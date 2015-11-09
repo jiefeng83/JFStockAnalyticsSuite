@@ -15,7 +15,7 @@ namespace KeywordsSearcher
         public PopupText(string text, string searchString)
         {
             InitializeComponent();
-            richTextBox1.Text = text;
+            richTextBox1.Text = text.Replace("\r\n", "\n");
 
             int selstart = 0;
             int sellength = 0;

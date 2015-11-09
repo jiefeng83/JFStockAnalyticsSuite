@@ -16,18 +16,16 @@ using System.Collections.Specialized;
 using System.Web;
 using System.Threading;
 
-using mshtml;
-
 namespace StockFundamentalStudy
 {
-
     public partial class Form1 : Form
     {
-        bool isFirstLoad = true;
-        bool startExtract = false;
-        bool extractSuccess = false;
-        int retries = 0;
-        string extractingSymbol = "";
+        enum MyState { FIRST_LOAD, TO_LOGIN, READY }
+
+        MyState myState = MyState.FIRST_LOAD;
+        string extractFolderPath = @".\StockReports\";
+        string currStockCode = "";
+        string cookies = "";
 
         int totalStockNum = 0;
         int currStockNum = 0;
@@ -51,7 +49,6 @@ namespace StockFundamentalStudy
         string FindDividendYield = "Dividend \r\n      Yield</SPAN></STRONG> <I>- Adjusted";
 
         Queue<string> stockAddressQueue = new Queue<string>();
-
         Regex regex = new Regex(@"^-?\d+(?:\.\d+)?");
 
         //string contents = "";
@@ -62,113 +59,28 @@ namespace StockFundamentalStudy
         DataTable dt = new DataTable("New_DataTable");
         List<string> stockList = new List<string>();
 
-        int secCounter = 0;
-
-
         Dictionary<string, StockInfo> StockList = new Dictionary<string, StockInfo>();
 
         public Form1()
         {
             InitializeComponent();
+        }
 
-            LogTextbox.Text += "Loading...\n";
-            ServicePointManager.DefaultConnectionLimit = 1000;
-            webBrowser1.ScriptErrorsSuppressed = true;
-            webBrowser1.ScrollBarsEnabled = false;
-            //webBrowser1.Navigate("http://www.shareinvestor.com/");
-
+        void Form1_Load(object sender, EventArgs e)
+        {
             string userName = "";
             string password = "";
             string hdr = "Authorization: Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(userName + ":" + password)) + System.Environment.NewLine;
+
+            webBrowser1.ScriptErrorsSuppressed = true;
+            webBrowser1.ScrollBarsEnabled = false;
             webBrowser1.Navigate(String.Format("https://{0}:{1}@www.shareinvestor.com/user/do_login.html?use_https=0", userName, password), null, null, hdr);
+
+            replaceText("Welcome!\nPlease log into Share Investor!");
+            Task.Factory.StartNew(InitSetup);
         }
 
-        private void calculation()
-        {
-            LogTextbox.Text += "Doing Calculation... \n";
-            LogTextbox.SelectionStart = LogTextbox.Text.Length;
-            LogTextbox.ScrollToCaret();
-
-            StudyResult studyResult = new StudyResult(StockList);
-            studyResult.Show();
-
-            LogTextbox.Text += "Calculation Completed! \n";
-            LogTextbox.SelectionStart = LogTextbox.Text.Length;
-            LogTextbox.ScrollToCaret();
-        }
-
-        private bool extractInfo(string contents)
-        {
-            StockInfo stockInfo = new StockInfo();
-            double tempDouble = 0;
-            bool parseSuccess = false;
-
-            stockInfo.symbol = extractingSymbol;
-            LogTextbox.Text += "Extracting: " + extractingSymbol + "\n";
-            LogTextbox.SelectionStart = LogTextbox.Text.Length;
-            LogTextbox.ScrollToCaret();
-
-            //Get stockName
-            tempString = getBetween2(contents, "<TITLE>", "</TITLE>");
-            string[] tempName = tempString.Split('-');
-            stockInfo.stockName = Regex.Match(tempName[0], @"[0-9a-zA-Z\s^.]+").Value;
-            stockInfo.stockName = stockInfo.stockName.Replace(" ", "");
-
-            //Get symbol
-            string tempSymbol = getBetween2(tempName[1], "(", ")").Replace(".SI", "");
-            if (tempSymbol != extractingSymbol)
-            {
-                secCounter = 0;
-                return false;
-            }
-
-            //Get lastPrice
-            tempString = getBetween2(contents, "Last (SGD):", "</TD>");
-            tempString = getBetween2(tempString, "<STRONG>", "</STRONG>");
-
-            parseSuccess = double.TryParse(tempString, NumberStyles.Any, CultureInfo.InvariantCulture, out tempDouble);
-            if (parseSuccess)
-                stockInfo.lastPrice = tempDouble;
-            else
-            {
-                secCounter = 0;
-                return false;
-            }
-
-            //Get dateUpdate
-            tempString = getBetween2(contents, FindDateUpdate, "</TH>");
-            stockInfo.dateUpdate = tempString;
-
-            stockInfo.netEarnings = extractList(contents, FindNetEarnings);
-            stockInfo.revenue = extractList(contents, FindRevenue);
-            stockInfo.shareHolderEquity = extractList(contents, FindShareHolderEquity);
-            stockInfo.ltLiabilities = extractList(contents, FindLTLiabilities);
-            stockInfo.eps = extractList(contents, FindEPS);
-            stockInfo.cash = extractList(contents, FindCash);
-            stockInfo.margin = extractList(contents, FindMargin);
-            stockInfo.debtToEquity = extractDouble(contents, FindDebtToEquity);
-            stockInfo.freeCashFlow = extractList(contents, FindFreeCashFlow);
-            stockInfo.profitMargin = extractDouble(contents, FindProfitMargin);
-            stockInfo.priceToNTA = extractDouble(contents, FindPriceToNTA);
-            stockInfo.interestCoverage = extractDouble(contents, FindInterestCoverage);
-            stockInfo.noOfShares = extractDouble(contents, FindNoOfShares);
-            stockInfo.shortTermDebt = extractDouble0(contents, FindShortTermDebt);
-            stockInfo.longTermDebt  = extractDouble0(contents, FindLongTermDebt);
-            stockInfo.dividendYieldExclSpecial = extractDouble(contents, FindDividendYield);
-
-            if (!StockList.ContainsKey(extractingSymbol))
-                StockList.Add(extractingSymbol, stockInfo);
-            else
-                StockList[extractingSymbol] = stockInfo;
-
-            ReadStockFromStockQueue();
-            return true;
-        }
-
-
-        //Helper Methods
-
-        private void Start_Click(object sender, EventArgs e)
+        void Start_Click(object sender, EventArgs e)
         {
             errorStockTextBox.Text = "";
             StockList.Clear();
@@ -191,144 +103,156 @@ namespace StockFundamentalStudy
                 totalStockNum = stockAddressQueue.Count;
             }
 
-            ReadStockFromStockQueue();
+            Task.Factory.StartNew(ReadStockFromStockQueue); //start ReadStockFromStockQueue from another thread
         }
 
-        private void ReadStockFromStockQueue()
+        void InitSetup()
+        {
+            while (myState != MyState.READY)
+            {
+                Thread.Sleep(2000);
+
+                Invoke((MethodInvoker)delegate
+                {
+                    switch (myState)
+                    {
+                        case MyState.FIRST_LOAD:
+                            webBrowser1.Document.Window.ScrollTo(3000, 0);
+                            myState = MyState.TO_LOGIN;
+                            break;
+
+                        case MyState.TO_LOGIN:
+                            if (webBrowser1.DocumentText.Contains("Welcome,"))
+                            {
+                                webBrowser1.Document.Window.ScrollTo(3000, 0);
+                                myState = MyState.READY;
+                                StartButton.Enabled = true;
+                                printText("Login Success!\n\nPress START to extract data of stocks.");
+                                //cookies = GetCookies();
+                            }
+                            break;
+                    }
+                });
+            }
+        }
+
+        void ReadStockFromStockQueue()
         {
             if (stockAddressQueue.Count > 0)
             {
-                extractingSymbol = stockAddressQueue.Dequeue();
-                webBrowser1.Navigate("http://www.shareinvestor.com/fundamental/financials.html?counter=" + extractingSymbol + ".SI&period=fy&cols=10");
-                startExtract = true;
+                currStockCode = stockAddressQueue.Dequeue();
+                int counter = 0;
+                bool extractSuccess = false;
+                
+                currStockNum++;
+                printText("Extracting " + currStockCode + "... (" + currStockNum + "/" + totalStockNum + ")");
+                webBrowser1.DocumentText = "";
+                webBrowser1.Navigate("http://www.shareinvestor.com/fundamental/financials.html?counter=" + currStockCode + ".SI&period=fy&cols=10");
+                
+                while (!extractSuccess && counter <= 3)
+                {
+                    Thread.Sleep(2000);
+
+                    Invoke((MethodInvoker)delegate
+                    {
+                        counter++;
+                        webBrowser1.Document.Window.ScrollTo(30, 470);
+                        extractSuccess = extractInfo(webBrowser1.DocumentText);
+                    });
+                }
+
+                if (extractSuccess)
+                    printText("Extract Success!");
+                else
+                {
+                    Invoke((MethodInvoker)delegate { errorStockTextBox.Text += currStockCode + "\n"; });
+                    printText("Extract Fail!");
+                }
+
+                ReadStockFromStockQueue();
             }
             else
                 calculation();
         }
 
-
-        private void stopButton_Click(object sender, EventArgs e)
+        void StopButton_Click(object sender, EventArgs e)
         {
             calculation();
         }
 
-        private void webBrowser1_DocumentCompleted(object sender, WebBrowserDocumentCompletedEventArgs e)
+        //########################## EXTRACT METHODS ##########################
+
+        void calculation()
         {
-            label1.Text = "OK";
-            secCounter = 0;
-            timer1.Enabled = true;
+            printText("Doing Calculation...");
+            
+            Invoke((MethodInvoker)delegate
+            {
+                StudyResult studyResult = new StudyResult(StockList);
+                studyResult.Show();
+            });
+
+            printText("Calculation Completed!");
         }
 
-        private void timer1_Tick(object sender, EventArgs e)
+        bool extractInfo(string contents)
         {
-            if (secCounter > 2)
-            {
-                if (startExtract)
-                {
-                    webBrowser1.Document.Window.ScrollTo(30, 470);
-                    extractSuccess = extractInfo(webBrowser1.DocumentText);
+            StockInfo stockInfo = new StockInfo();
+            double tempDouble = 0;
+            bool parseSuccess = false;
 
-                    if (extractSuccess)
-                    {
-                        extractSuccess = false;
-                        timer1.Enabled = false;
-                        retries = 0;
+            stockInfo.symbol = currStockCode;
+            //printText("Extracting: " + currStockCode);
 
-                        currStockNum++;
-                        LogTextbox.Text += "Extract Success! (" + currStockNum + "/" + totalStockNum + ")\n";
-                        LogTextbox.SelectionStart = LogTextbox.Text.Length;
-                        LogTextbox.ScrollToCaret();
-                    }
-                    else
-                    {
-                        if (retries > 3)
-                        {
-                            currStockNum++;
-                            errorStockTextBox.Text += extractingSymbol + "\n";
-                            ReadStockFromStockQueue();
-                            timer1.Enabled = false;
-                            retries = 0;
-                        }
-                        else
-                        {
-                            retries++;
-                            LogTextbox.Text += "Extract Fail. Retry #: " + retries + "\n";
-                            LogTextbox.SelectionStart = LogTextbox.Text.Length;
-                            LogTextbox.ScrollToCaret();
-                        }
-                    }
-                }
-                else
-                {
-                    if (webBrowser1.DocumentText.Contains("Welcome,"))
-                    {
-                        StartButton.Enabled = true;
-                        LogTextbox.Text = "Login Success!\n\nPress READ to read Stock List from file.\nPress START to extract data of stocks in Stock List.\n";
-                        LogTextbox.SelectionStart = LogTextbox.Text.Length;
-                        LogTextbox.ScrollToCaret();
-                    }
-                    else
-                    {
-                        if (isFirstLoad)
-                        {
-                            isFirstLoad = false;
-                            LogTextbox.Text = "Welcome!\n";
-                        }
-                        LogTextbox.Text += "Please log into Share Investor!\n";
-                        LogTextbox.SelectionStart = LogTextbox.Text.Length;
-                        LogTextbox.ScrollToCaret();
-                    }
+            //Get stockName
+            tempString = getBetween2(contents, "<TITLE>", "</TITLE>");
+            string[] tempName = tempString.Split('-');
+            stockInfo.stockName = Regex.Match(tempName[0], @"[0-9a-zA-Z\s^.]+").Value;
+            stockInfo.stockName = stockInfo.stockName.Replace(" ", "");
 
-                    webBrowser1.Document.Window.ScrollTo(3000, 0);
-                    timer1.Enabled = false;
-                }
+            //Get symbol
+            string tempSymbol = getBetween2(tempName[1], "(", ")").Replace(".SI", "");
+            if (tempSymbol != currStockCode)
+                return false;
 
-                secCounter = 0;
-            }
+            //Get lastPrice
+            tempString = getBetween2(contents, "Last (SGD):", "</TD>");
+            tempString = getBetween2(tempString, "<STRONG>", "</STRONG>");
+
+            parseSuccess = double.TryParse(tempString, NumberStyles.Any, CultureInfo.InvariantCulture, out tempDouble);
+            if (parseSuccess)
+                stockInfo.lastPrice = tempDouble;
             else
-                secCounter++;
+                return false;
+
+            //Get dateUpdate
+            tempString = getBetween2(contents, FindDateUpdate, "</TH>");
+            stockInfo.dateUpdate = tempString;
+
+            stockInfo.netEarnings = extractList(contents, FindNetEarnings);
+            stockInfo.revenue = extractList(contents, FindRevenue);
+            stockInfo.shareHolderEquity = extractList(contents, FindShareHolderEquity);
+            stockInfo.ltLiabilities = extractList(contents, FindLTLiabilities);
+            stockInfo.eps = extractList(contents, FindEPS);
+            stockInfo.cash = extractList(contents, FindCash);
+            stockInfo.margin = extractList(contents, FindMargin);
+            stockInfo.debtToEquity = extractDouble(contents, FindDebtToEquity);
+            stockInfo.freeCashFlow = extractList(contents, FindFreeCashFlow);
+            stockInfo.profitMargin = extractDouble(contents, FindProfitMargin);
+            stockInfo.priceToNTA = extractDouble(contents, FindPriceToNTA);
+            stockInfo.interestCoverage = extractDouble(contents, FindInterestCoverage);
+            stockInfo.noOfShares = extractDouble(contents, FindNoOfShares);
+            stockInfo.shortTermDebt = extractDouble0(contents, FindShortTermDebt);
+            stockInfo.longTermDebt = extractDouble0(contents, FindLongTermDebt);
+            stockInfo.dividendYieldExclSpecial = extractDouble(contents, FindDividendYield);
+
+            if (!StockList.ContainsKey(currStockCode))
+                StockList.Add(currStockCode, stockInfo);
+            else
+                StockList[currStockCode] = stockInfo;
+
+            return true;
         }
-
-        private void ReadInstFromFile(string filePath)
-        {
-            try
-            {
-                if (!System.IO.File.Exists(@filePath))
-                {
-                    return;
-                }
-
-                string[] inst = System.IO.File.ReadAllLines(@filePath);
-
-                foreach (string str in inst)
-                {
-                    stockTextbox.Text += str + "\n";
-
-                }
-            }
-            catch { MessageBox.Show("Error reading file!", "Error"); }
-        }
-
-        private void ReadInstFromFile()
-        {
-            try
-            {
-                if (!System.IO.File.Exists(@".\DefaultStocks.txt"))
-                {
-                    return;
-                }
-
-                string[] inst = System.IO.File.ReadAllLines(@".\DefaultStocks.txt");
-
-                foreach (string str in inst)
-                {
-                    stockTextbox.Text += str + "\n";
-                    stockAddressQueue.Enqueue("http://www.shareinvestor.com/fundamental/financials.html?counter=" + str + ".SI&period=fy&cols=10");
-                }
-            }
-            catch { MessageBox.Show("Error reading file!", "Error"); }
-        }
-
 
         List<double> extractList(string contents, string findString)
         {
@@ -414,8 +338,9 @@ namespace StockFundamentalStudy
 
             return tempDouble;
         }
-
-        public static string getBetween(string strSource, string strStart, string strEnd)
+		
+		//########################### TEXT UTILITY METHODS ###########################
+        static string getBetween(string strSource, string strStart, string strEnd)
         {
             int Start, End;
             if (strSource.Contains(strStart) && strSource.Contains(strEnd))
@@ -430,7 +355,7 @@ namespace StockFundamentalStudy
             }
         }
 
-        public static string getBetween2(string strSource, string strStart, string strEnd)
+        static string getBetween2(string strSource, string strStart, string strEnd)
         {
             int Start, End;
             if (strSource.Contains(strStart) && strSource.Contains(strEnd))
@@ -445,7 +370,7 @@ namespace StockFundamentalStudy
             }
         }
 
-        public static string trimFront(string strSource, string strStart)
+        static string trimFront(string strSource, string strStart)
         {
             int Start;
             if (strSource.Contains(strStart))
@@ -459,7 +384,7 @@ namespace StockFundamentalStudy
             }
         }
 
-        private void SaveButton_Click(object sender, EventArgs e)
+        void SaveButton_Click(object sender, EventArgs e)
         {
             saveFileDialog1.InitialDirectory = @".\";
 
@@ -473,13 +398,11 @@ namespace StockFundamentalStudy
                     WriteStockToFile(file);
                 }
                 catch (IOException)
-                {
-                }
+                {}
             }
-
         }
 
-        private void WriteStockToFile(string filePath)
+        void WriteStockToFile(string filePath)
         {
             if (!System.IO.File.Exists(@filePath))
             {
@@ -490,8 +413,29 @@ namespace StockFundamentalStudy
             System.IO.File.WriteAllText(@filePath, stockTextbox.Text, Encoding.UTF8);
         }
 
+        void printText(string text)
+        {
+            Invoke((MethodInvoker)delegate
+            {
+                LogTextbox.Text += text + "\n";
+                LogTextbox.SelectionStart = LogTextbox.Text.Length;
+                LogTextbox.ScrollToCaret();
+            });
+        }
 
-        private void ReadButton_Click(object sender, EventArgs e)
+        void replaceText(string text)
+        {
+            Invoke((MethodInvoker)delegate
+            {
+                LogTextbox.Text = text + "\n";
+                LogTextbox.SelectionStart = LogTextbox.Text.Length;
+                LogTextbox.ScrollToCaret();
+            });
+        }
+
+        //########################### GET STOCK SYMBOLS ###########################
+
+        void ReadButton_Click(object sender, EventArgs e)
         {
             getStockSymbols();
             //openFileDialog1.InitialDirectory = @".\";
@@ -508,7 +452,6 @@ namespace StockFundamentalStudy
             //    {
             //    }
             //}
-
         }
 
         public bool getStockSymbols()
@@ -575,6 +518,7 @@ namespace StockFundamentalStudy
                 }
             }
         }
+
     }
 
     public class StockInfo

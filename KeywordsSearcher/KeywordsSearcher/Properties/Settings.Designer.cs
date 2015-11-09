@@ -59,5 +59,17 @@ namespace KeywordsSearcher.Properties {
                 this["StartDate"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("2015-09-20")]
+        public global::System.DateTime LastDate {
+            get {
+                return ((global::System.DateTime)(this["LastDate"]));
+            }
+            set {
+                this["LastDate"] = value;
+            }
+        }
     }
 }

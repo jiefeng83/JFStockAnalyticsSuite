@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{31BBA359-96C0-478A-AE7E-830AA93AF832}</ProjectGuid>
+    <ProjectGuid>{5D916829-DD0C-4124-80A8-28631FAC6CF1}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>StockFundamentalStudy</RootNamespace>
-    <AssemblyName>StockFundamentalStudy</AssemblyName>
+    <RootNamespace>StockPriceExtractor</RootNamespace>
+    <AssemblyName>StockPriceExtractor</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -65,12 +65,6 @@
     <Compile Include="ResultsDisplay.Designer.cs">
       <DependentUpon>ResultsDisplay.cs</DependentUpon>
     </Compile>
-    <Compile Include="StudyResult.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="StudyResult.Designer.cs">
-      <DependentUpon>StudyResult.cs</DependentUpon>
-    </Compile>
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
@@ -84,12 +78,6 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
-    <EmbeddedResource Include="ResultsDisplay.resx">
-      <DependentUpon>ResultsDisplay.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="StudyResult.resx">
-      <DependentUpon>StudyResult.cs</DependentUpon>
-    </EmbeddedResource>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

@@ -18,6 +18,8 @@ using System.Threading;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
+//ReportExtractor extracts annual and quarterly reports from StockInvestor.com. A webpro membership is required.
+
 namespace ReportExtractor
 {
     public partial class Form1 : Form

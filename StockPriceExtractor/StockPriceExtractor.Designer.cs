@@ -1,6 +1,6 @@
 ﻿namespace StockPriceExtractor
 {
-    partial class Form1
+    partial class StockPriceExtractor
     {
         /// <summary>
         /// Required designer variable.
@@ -28,7 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(StockPriceExtractor));
             this.webBrowser1 = new System.Windows.Forms.WebBrowser();
             this.stockTextbox = new System.Windows.Forms.RichTextBox();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();

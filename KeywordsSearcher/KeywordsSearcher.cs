@@ -14,10 +14,10 @@ using iTextSharp.text.pdf.parser;
 
 namespace KeywordsSearcher
 {
-    public partial class Form1 : Form
+    public partial class KeywordsSearcher : Form
     {
         List<FileInfo> fileInfoList = new List<FileInfo>();
-        public Form1()
+        public KeywordsSearcher()
         {
             InitializeComponent();
             DateTime t = DateTime.MinValue;

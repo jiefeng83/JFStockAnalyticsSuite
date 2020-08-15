@@ -18,7 +18,7 @@ using System.Threading;
 
 namespace StockFundamentalStudy
 {
-    public partial class Form1 : Form
+    public partial class StockFundamentalStudy : Form
     {
         enum MyState { FIRST_LOAD, TO_LOGIN, READY }
 
@@ -31,10 +31,13 @@ namespace StockFundamentalStudy
         int currStockNum = 0;
 
         string FindNetEarnings = " Net Earnings</STRONG> </TH>";
+        string FindNetEarnings2 = " Distributable Income to Unitholders</STRONG> </TH>";
         string FindRevenue = " Revenue</STRONG> </TH>";
         string FindShareHolderEquity = " Shareholders' Equity</STRONG> </TH>";
+        string FindShareHolderEquity2 = " Unitholders' Funds</STRONG> </TH>";
         string FindLTLiabilities = " Long Term Liabilities</STRONG> </TH>";
         string FindEPS = "(EPS)</SPAN></STRONG> <I>- Historical</I>";
+        string FindEPU = "(EPU)</SPAN></STRONG> <I>- Historical</I>";
         string FindCash = "Cash And Cash Equivalents At End</STRONG> </TH>";
         string FindMargin = "(Net Earnings/Revenue) </TH>";
         string FindDebtToEquity = "Debt To Equity</SPAN></STRONG><BR> ((Long Term Debt + Short Term Debt)";
@@ -47,6 +50,7 @@ namespace StockFundamentalStudy
         string FindShortTermDebt = "Short Term Debt (Include Current Portion of Long Term Debt)</STRONG>";
         string FindLongTermDebt = "Long Term Debt</STRONG>";
         string FindDividendYield = "Dividend \r\n      Yield</SPAN></STRONG> <I>- Adjusted";
+        string FindDividendYield2 = "Distribution \r\n      Yield</SPAN></STRONG> <I>- Adjusted";
 
         Queue<string> stockAddressQueue = new Queue<string>();
         Regex regex = new Regex(@"^-?\d+(?:\.\d+)?");
@@ -61,13 +65,14 @@ namespace StockFundamentalStudy
 
         Dictionary<string, StockInfo> StockList = new Dictionary<string, StockInfo>();
 
-        public Form1()
+        public StockFundamentalStudy()
         {
             InitializeComponent();
         }
 
         void Form1_Load(object sender, EventArgs e)
         {
+            stockTextbox.Text = Properties.Settings.Default.Symbols;
             string userName = "";
             string password = "";
             string hdr = "Authorization: Basic " + Convert.ToBase64String(Encoding.ASCII.GetBytes(userName + ":" + password)) + System.Environment.NewLine;
@@ -82,6 +87,8 @@ namespace StockFundamentalStudy
 
         void Start_Click(object sender, EventArgs e)
         {
+            Properties.Settings.Default.Symbols = stockTextbox.Text;
+            Properties.Settings.Default.Save();
             errorStockTextBox.Text = "";
             StockList.Clear();
             stockAddressQueue.Clear();
@@ -117,7 +124,7 @@ namespace StockFundamentalStudy
                     switch (myState)
                     {
                         case MyState.FIRST_LOAD:
-                            webBrowser1.Document.Window.ScrollTo(3000, 0);
+                            webBrowser1.Document.Window.ScrollTo(0, 420);
                             myState = MyState.TO_LOGIN;
                             break;
 
@@ -156,8 +163,12 @@ namespace StockFundamentalStudy
                     Invoke((MethodInvoker)delegate
                     {
                         counter++;
-                        webBrowser1.Document.Window.ScrollTo(30, 470);
-                        extractSuccess = extractInfo(webBrowser1.DocumentText);
+                        try
+                        {
+                            webBrowser1.Document.Window.ScrollTo(30, 470);
+                            extractSuccess = extractInfo(webBrowser1.DocumentText);
+                        }
+                        catch {}
                     });
                 }
 
@@ -211,7 +222,8 @@ namespace StockFundamentalStudy
             stockInfo.stockName = stockInfo.stockName.Replace(" ", "");
 
             //Get symbol
-            string tempSymbol = getBetween2(tempName[1], "(", ")").Replace(".SI", "");
+            string tempSymbol = "";
+            if (tempName.Length>1) tempSymbol = getBetween2(tempName[1], "(", ")").Replace(".SI", "");
             if (tempSymbol != currStockCode)
                 return false;
 
@@ -230,10 +242,13 @@ namespace StockFundamentalStudy
             stockInfo.dateUpdate = tempString;
 
             stockInfo.netEarnings = extractList(contents, FindNetEarnings);
+            if (stockInfo.netEarnings.Count == 0) stockInfo.netEarnings = extractList(contents, FindNetEarnings2);
             stockInfo.revenue = extractList(contents, FindRevenue);
             stockInfo.shareHolderEquity = extractList(contents, FindShareHolderEquity);
+            if (stockInfo.shareHolderEquity.Count == 0) stockInfo.shareHolderEquity = extractList(contents, FindShareHolderEquity2);
             stockInfo.ltLiabilities = extractList(contents, FindLTLiabilities);
             stockInfo.eps = extractList(contents, FindEPS);
+            if(stockInfo.eps.Count == 0) stockInfo.eps = extractList(contents, FindEPU);
             stockInfo.cash = extractList(contents, FindCash);
             stockInfo.margin = extractList(contents, FindMargin);
             stockInfo.debtToEquity = extractDouble(contents, FindDebtToEquity);
@@ -245,6 +260,7 @@ namespace StockFundamentalStudy
             stockInfo.shortTermDebt = extractDouble0(contents, FindShortTermDebt);
             stockInfo.longTermDebt = extractDouble0(contents, FindLongTermDebt);
             stockInfo.dividendYieldExclSpecial = extractDouble(contents, FindDividendYield);
+            if (stockInfo.dividendYieldExclSpecial == -99999999) stockInfo.dividendYieldExclSpecial = extractDouble(contents, FindDividendYield2);
 
             if (!StockList.ContainsKey(currStockCode))
                 StockList.Add(currStockCode, stockInfo);

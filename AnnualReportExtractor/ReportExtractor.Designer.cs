@@ -1,6 +1,6 @@
 ﻿namespace ReportExtractor
 {
-    partial class Form1
+    partial class ReportExtractor
     {
         /// <summary>
         /// Required designer variable.

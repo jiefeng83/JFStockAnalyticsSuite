@@ -20,7 +20,7 @@ using mshtml;
 
 namespace StockPriceExtractor
 {
-    public partial class Form1 : Form
+    public partial class StockPriceExtractor : Form
     {
         string extractingSymbol = "";
 
@@ -37,7 +37,7 @@ namespace StockPriceExtractor
 
         Dictionary<string, StockInfo> StockList = new Dictionary<string, StockInfo>();
 
-        public Form1()
+        public StockPriceExtractor()
         {
             SetFeatureBrowserEmulation();
             InitializeComponent();
@@ -426,8 +426,8 @@ namespace StockPriceExtractor
     {
         private string GeneratedSource { get; set; }
         private string URL { get; set; }
-        private Form1 mainForm;
-        public WebProcessor(Form1 callingForm)
+        private StockPriceExtractor mainForm;
+        public WebProcessor(StockPriceExtractor callingForm)
         {
             mainForm = callingForm;
             GeneratedSource = "";

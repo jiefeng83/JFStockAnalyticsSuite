@@ -1,6 +1,6 @@
 ﻿namespace KeywordsSearcher
 {
-    partial class Form1
+    partial class KeywordsSearcher
     {
         /// <summary>
         /// Required designer variable.

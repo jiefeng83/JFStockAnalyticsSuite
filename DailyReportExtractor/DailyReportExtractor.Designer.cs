@@ -1,6 +1,6 @@
 ﻿namespace DailyReportExtractor
 {
-    partial class Form1
+    partial class DailyReportExtractor
     {
         /// <summary>
         /// Required designer variable.

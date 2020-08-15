@@ -1,6 +1,6 @@
 ﻿namespace StockFundamentalStudy
 {
-    partial class Form1
+    partial class StockFundamentalStudy
     {
         /// <summary>
         /// Required designer variable.
@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(StockFundamentalStudy));
             this.webBrowser1 = new System.Windows.Forms.WebBrowser();
             this.StartButton = new System.Windows.Forms.Button();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
@@ -54,7 +54,7 @@
             this.webBrowser1.Name = "webBrowser1";
             this.webBrowser1.ScriptErrorsSuppressed = true;
             this.webBrowser1.ScrollBarsEnabled = false;
-            this.webBrowser1.Size = new System.Drawing.Size(582, 83);
+            this.webBrowser1.Size = new System.Drawing.Size(578, 118);
             this.webBrowser1.TabIndex = 2;
             // 
             // StartButton
@@ -76,7 +76,7 @@
             // stockTextbox
             // 
             this.stockTextbox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.stockTextbox.Location = new System.Drawing.Point(12, 130);
+            this.stockTextbox.Location = new System.Drawing.Point(12, 165);
             this.stockTextbox.Name = "stockTextbox";
             this.stockTextbox.Size = new System.Drawing.Size(75, 81);
             this.stockTextbox.TabIndex = 4;
@@ -90,10 +90,10 @@
             // 
             this.LogTextbox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.LogTextbox.Location = new System.Drawing.Point(195, 130);
+            this.LogTextbox.Location = new System.Drawing.Point(195, 165);
             this.LogTextbox.Name = "LogTextbox";
             this.LogTextbox.ReadOnly = true;
-            this.LogTextbox.Size = new System.Drawing.Size(488, 81);
+            this.LogTextbox.Size = new System.Drawing.Size(484, 81);
             this.LogTextbox.TabIndex = 6;
             this.LogTextbox.Text = "";
             // 
@@ -101,7 +101,7 @@
             // 
             this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(12, 115);
+            this.label1.Location = new System.Drawing.Point(12, 150);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(54, 13);
             this.label1.TabIndex = 7;
@@ -111,7 +111,7 @@
             // 
             this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(192, 115);
+            this.label2.Location = new System.Drawing.Point(192, 150);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(37, 13);
             this.label2.TabIndex = 7;
@@ -120,7 +120,7 @@
             // errorStockTextBox
             // 
             this.errorStockTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.errorStockTextBox.Location = new System.Drawing.Point(101, 130);
+            this.errorStockTextBox.Location = new System.Drawing.Point(101, 165);
             this.errorStockTextBox.Name = "errorStockTextBox";
             this.errorStockTextBox.ReadOnly = true;
             this.errorStockTextBox.Size = new System.Drawing.Size(75, 81);
@@ -131,7 +131,7 @@
             // 
             this.label3.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(101, 115);
+            this.label3.Location = new System.Drawing.Point(101, 150);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(79, 13);
             this.label3.TabIndex = 7;
@@ -141,7 +141,7 @@
             // 
             this.stopButton.BackColor = System.Drawing.Color.LightCoral;
             this.stopButton.Location = new System.Drawing.Point(12, 58);
-            this.stopButton.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.stopButton.Margin = new System.Windows.Forms.Padding(2);
             this.stopButton.Name = "stopButton";
             this.stopButton.Size = new System.Drawing.Size(86, 23);
             this.stopButton.TabIndex = 9;
@@ -149,11 +149,11 @@
             this.stopButton.UseVisualStyleBackColor = false;
             this.stopButton.Click += new System.EventHandler(this.StopButton_Click);
             // 
-            // Form1
+            // StockFundamentalStudy
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(707, 218);
+            this.ClientSize = new System.Drawing.Size(703, 253);
             this.Controls.Add(this.stopButton);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label3);
@@ -164,7 +164,7 @@
             this.Controls.Add(this.webBrowser1);
             this.Controls.Add(this.StartButton);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Name = "Form1";
+            this.Name = "StockFundamentalStudy";
             this.Text = "Stock Fundamental Study";
             this.Load += new System.EventHandler(this.Form1_Load);
             this.ResumeLayout(false);

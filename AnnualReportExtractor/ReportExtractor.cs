@@ -18,9 +18,11 @@ using System.Threading;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 
-namespace DailyReportExtractor
+//ReportExtractor extracts annual and quarterly reports from ShareInvestor.com. A webpro membership is required.
+
+namespace ReportExtractor
 {
-    public partial class Form1 : Form
+    public partial class ReportExtractor : Form
     {
         enum MyState { FIRST_LOAD, TO_LOGIN, READY }
 
@@ -40,7 +42,7 @@ namespace DailyReportExtractor
         List<string> stockList = new List<string>();
         List<MyFileInfo> CompleteFileList = new List<MyFileInfo>();
  
-        public Form1()
+        public ReportExtractor()
         {
             InitializeComponent();
 
@@ -67,19 +69,30 @@ namespace DailyReportExtractor
     
         void Start_Click(object sender, EventArgs e)
         {
+            selectedType = comboBox1.Text;
+            startDate = dateTimePicker1.Value;
+            errorStockTextBox.Text = "";
             stockAddressQueue = new ConcurrentQueue<string>();
             currStockNum = 0;
-            stockAddressQueue.Enqueue("1");
-            stockAddressQueue.Enqueue("2");
-            stockAddressQueue.Enqueue("3");
-            stockAddressQueue.Enqueue("4");
-            stockAddressQueue.Enqueue("5");
-            totalStockNum = stockAddressQueue.Count;
+            if (stockAddressQueue.Count == 0)
+            {
+                StringReader strReader = new StringReader(stockTextbox.Text);
+                string str;
+
+                for (; ; )
+                {
+                    str = strReader.ReadLine();
+                    if (str != null && str != "") stockAddressQueue.Enqueue(str);
+                    else break;
+                }
+
+                totalStockNum = stockAddressQueue.Count;
+            }
 
             Task.Factory.StartNew(ReadStockFromStockQueue); //start ReadStockFromStockQueue from another thread
         }
-
-        void SearchButton_Click(object sender, EventArgs e)
+        
+        private void SearchButton_Click(object sender, EventArgs e)
         {
             if (!System.IO.File.Exists(@"KeywordsSearcher.exe"))
             {
@@ -89,11 +102,11 @@ namespace DailyReportExtractor
 
             Process keywordSearcher = new Process();
             keywordSearcher.StartInfo.FileName = "KeywordsSearcher.exe";
-            keywordSearcher.StartInfo.Arguments = extractFolderPath; // if you need some
+            keywordSearcher.StartInfo.Arguments = extractFolderPath + " " + dateTimePicker1.Value.ToString("ddMMMyy"); // if you need some
             keywordSearcher.Start();
         }
 
-        void ClearButton_Click(object sender, EventArgs e)
+        private void ClearButton_Click(object sender, EventArgs e)
         {
             System.IO.DirectoryInfo extractFolderInfo = new DirectoryInfo(extractFolderPath);
 
@@ -141,9 +154,8 @@ namespace DailyReportExtractor
         {
             if (stockAddressQueue.IsEmpty)
             {
-                printText("Extract Completed! Total files = " + CompleteFileList.Count);
-                myState = MyState.READY;
-                SaveAllFiles(CompleteFileList);
+                printText("Extract Completed!");
+				SaveAllFiles(CompleteFileList);
                 return;
             }
 
@@ -151,11 +163,11 @@ namespace DailyReportExtractor
             {
                 int counter = 0;
                 bool extractSuccess = false;
-                
+
                 currStockNum++;
-                printText("Reading... (" + currStockNum + "/" + totalStockNum + ")");
+                printText("Reading " + currStockCode + "... (" + currStockNum + "/" + totalStockNum + ")");
                 webBrowser1.DocumentText = "";
-                webBrowser1.Navigate("http://www.shareinvestor.com/fundamental/events_calendar.html#/?type=events_historical&page=" + currStockCode);
+                webBrowser1.Navigate("http://www.shareinvestor.com/fundamental/events_calendar.html#/?type=events_historical&counter=" + currStockCode + ".SI&market=sgx&page=1");
 
                 while (!extractSuccess && counter <= 3)
                 {
@@ -173,6 +185,8 @@ namespace DailyReportExtractor
                             printText("Extract Fail! Retry " + counter + "...");
                     });
                 }
+                if(!extractSuccess)
+                    Invoke((MethodInvoker)delegate { errorStockTextBox.Text += currStockCode + "\n"; });
 
                 ReadStockFromStockQueue();
             }
@@ -182,8 +196,23 @@ namespace DailyReportExtractor
 
         bool ExtractInfo(string contents)
         {
-            List<MyFileInfo> fl = extractList(contents);
+            //Get stockName
+            //contents = trimFront(contents, "<OPTION selected");
+            contents = trimFront(contents, "-- Select Counter --");
+            contents = trimFront(contents, "selected");
+            string stockName = getBetween2(contents, ">", " (").Replace("\r", "").Replace("\n", "");
+            contents = trimFront(contents, stockName);
+            stockName = Regex.Match(stockName, @"[0-9a-zA-Z\s^.]+").Value;
+            stockName = stockName.Replace(" ", "");
 
+            //Get symbol
+            string stockCode = getBetween2(contents, "(", ")").Replace(".SI", "");
+            if (stockCode != currStockCode)
+            {
+                return false;
+            }
+
+            List<MyFileInfo> fl = extractList(contents, stockName, stockCode);
             if (fl.Count == 0)
                 return false;
             else
@@ -193,7 +222,7 @@ namespace DailyReportExtractor
             }
         }
 
-        List<MyFileInfo> extractList(string contents)
+        List<MyFileInfo> extractList(string contents, string symbol, string code)
         {
             var list = new List<MyFileInfo>();
             string tempContent = contents;
@@ -204,9 +233,7 @@ namespace DailyReportExtractor
 
                 tempContent = temp != "INVALID" ? temp : tempContent;
                 string dateString = getBetween2(tempContent, "<TD>", "</TD>");
-                tempContent = trimFront(tempContent, "href=\"/fundamental/factsheet.html?counter");
-                string code = getBetween2(tempContent, "=", ".SI");
-                string symbol = getBetween2(tempContent, ">", "<").Replace(" ", "").Replace("\r\n", "");
+                tempContent = trimFront(tempContent, "href=\"/fundamental/factsheet.html?counter=");
                 string typeString = getBetween2(tempContent, "<SPAN>", "</SPAN>").Replace(" ", "");
                 string urlString = getBetween(tempContent, "http://repository.shareinvestor.com/rpt_view.pl", " \r\n");
 
@@ -337,6 +364,9 @@ namespace DailyReportExtractor
                 return strSource;
             }
         }
+
+
+
     }
 
     public class MyFileInfo

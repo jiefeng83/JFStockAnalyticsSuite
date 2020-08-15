@@ -22,13 +22,9 @@ namespace StockFundamentalStudy
                 for (int i = 0; i < si.netEarnings.Count; i++)
                 {
                     if (si.netEarnings[i] != -99999999 && i < si.ltLiabilities.Count && i < si.shareHolderEquity.Count)
-                    {
                         si.roc.Add(si.netEarnings[i] * 100 / (si.ltLiabilities[i] + si.shareHolderEquity[i]));
-                    }
                     else
-                    {
                         si.roc.Add(-99999999);
-                    }
                 }
 
                 si.avgRoc[0] = findAvgRoc(1.0, si.roc);
@@ -200,7 +196,6 @@ namespace StockFundamentalStudy
                         dataGridView1.Rows[rowIndex].Cells[i + 18].Style.BackColor = Color.IndianRed;
                         si.score -= 2;
                     }
-
                 }
 
                 if (si.priceToPurchaseOverLast > 1)
@@ -218,7 +213,6 @@ namespace StockFundamentalStudy
                     dataGridView1.Rows[rowIndex].Cells[25].Style.BackColor = Color.IndianRed;
                     si.score -= 2;
                 }
-
 
                 dataGridView1.Rows[rowIndex].Cells[26].Value = si.score;
                 dataGridView1.Rows[rowIndex].Cells[27].Value = si.dateUpdate;
@@ -238,7 +232,6 @@ namespace StockFundamentalStudy
                     else
                         dataGridView1.Rows[rowIndex].Cells[28+i].Style.BackColor = Color.IndianRed;
                 }
-
 
                 dataGridView1.Rows[rowIndex].Cells[31].Value = formatDouble(si.priceToNTA);
                 dataGridView1.Rows[rowIndex].Cells[32].Value = formatDouble(si.profitMargin);
@@ -273,14 +266,12 @@ namespace StockFundamentalStudy
                 
             }
             dataGridView1.ResumeLayout();
-
         }
 
         string formatDouble(double value)
         {
             return value != -99999999 ? value.ToString("0.##") : "-";
         }
-
 
         double findGrowth(int num, List<double> value)
         {
@@ -307,7 +298,6 @@ namespace StockFundamentalStudy
                     else
                         return -99999999;
                 }
-
                 return temp / num;
             }
             else

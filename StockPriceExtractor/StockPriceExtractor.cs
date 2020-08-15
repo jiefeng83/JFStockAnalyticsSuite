@@ -67,6 +67,7 @@ namespace StockPriceExtractor
             }
             else
             {
+                webBrowser1.Document.Window.ScrollTo(0, 420);
                 LogTextbox.Text = "Welcome!\n";
                 LogTextbox.Text += "Please log into Share Investor!\n";
                 LogTextbox.SelectionStart = LogTextbox.Text.Length;
@@ -204,7 +205,8 @@ namespace StockPriceExtractor
             {
                 Console.WriteLine("Extracting " + symbol + "....");
                 WebProcessor webProcessor = new WebProcessor(this);
-                string html = webProcessor.GetGeneratedHTML("http://www.shareinvestor.com/prices/historical_price.html#/?counter=" + symbol + ".SI&historical_view=daily&page=-1");
+
+                string html = webProcessor.GetGeneratedHTML("http://www.shareinvestor.com/prices/historical_price.html#/?type=historical_price_by_stock&counter=" + symbol + ".SI&historical_view=daily");
                 if (!html.Contains("No data available in table") && html != "")
                 {
                     string table = getBetween2(html, "<table class=\"sic_table dataTable no-footer\" id=\"sic_historicalPriceTable\" role=\"grid\" cellspacing=\"1\">", "</table>");
